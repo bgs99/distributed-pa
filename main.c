@@ -19,9 +19,6 @@ void close_pipes(dist_process dp[], local_id current) {
                 close(dp[i].pipe_rd[j]);
                 close(dp[i].pipe_wr[j]);
             }
-            if (i != j && current == PARENT_ID) {
-                close(dp[i].pipe_wr[j]);
-            }
         }
     }
 }
@@ -112,7 +109,8 @@ int main(int argc, char *argv[]) {
 
             receive_all(&dp[i], i, &msg);
             log_received_all_started(dp[i].local_pid);
-// 2
+
+            // 2
 
             // 3
             memset(msg.s_payload, 0, msg.s_header.s_payload_len);

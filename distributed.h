@@ -5,7 +5,7 @@
 #ifndef DISTRIBUTEDOMPUTING_PA1_TEMP_H
 #define DISTRIBUTEDOMPUTING_PA1_TEMP_H
 
-#include <unistd.h>
+#include <sys/types.h>
 #include "ipc.h"
 
 typedef struct {
