@@ -2,18 +2,15 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <unistd.h> // fork
+#include <unistd.h>
 #include <sys/wait.h>
 #include <memory.h>
 #include <errno.h>
 
 #include "ipc.h"
 #include "common.h"
-#include "pa1.h"
 #include "distributed.h"
-FILE *event_log;
-static const char *const log_pipe_opened =
-        "Pipe (rd %3d, wr %3d) has OPENED\n";
+#include "logger.h"
 
 void close_pipes(dist_process dp[], local_id current) {
     for (int i = 0; i < processes_total; ++i) {
@@ -25,6 +22,15 @@ void close_pipes(dist_process dp[], local_id current) {
             if (i != j && current == PARENT_ID) {
                 close(dp[i].pipe_wr[j]);
             }
+        }
+    }
+}
+
+void receive_all(dist_process *dp, local_id curr, Message *msg) {
+    memset(msg->s_payload, 0, msg->s_header.s_payload_len);
+    for (local_id j = 1; j < processes_total; ++j) {
+        if (j != curr) {
+            receive(dp, j, msg);
         }
     }
 }
@@ -101,24 +107,12 @@ int main(int argc, char *argv[]) {
             sprintf(msg.s_payload, log_started_fmt, dp[i].local_pid, dp[i].pid, getppid());
             msg.s_header.s_payload_len = (uint16_t) strlen(msg.s_payload);
 
-            fprintf(event_log, log_started_fmt, dp[i].local_pid, dp[i].pid, getppid());
-            fflush(event_log);
-            printf(log_started_fmt, dp[i].local_pid, dp[i].pid, getppid());
-
+            log_started(dp[i].local_pid);
             send_multicast(&dp[i], &msg);
 
-            memset(msg.s_payload, 0, msg.s_header.s_payload_len);
-            for (local_id j = 1; j < processes_total; ++j) {
-                if (j != i) {
-                    receive(&dp[i], j, &msg);
-                }
-            }
-
-            fprintf(event_log, log_received_all_started_fmt, dp[i].local_pid);
-            fflush(event_log);
-            printf(log_received_all_started_fmt, dp[i].local_pid);
-
-            // 2
+            receive_all(&dp[i], i, &msg);
+            log_received_all_started(dp[i].local_pid);
+// 2
 
             // 3
             memset(msg.s_payload, 0, msg.s_header.s_payload_len);
@@ -126,21 +120,11 @@ int main(int argc, char *argv[]) {
             sprintf(msg.s_payload, log_done_fmt, dp[i].local_pid);
             msg.s_header.s_payload_len = (uint16_t) strlen(msg.s_payload);
 
-            fprintf(event_log, log_done_fmt, dp[i].local_pid);
-            fflush(event_log);
-            printf(log_done_fmt, dp[i].local_pid);
-
+            log_done(dp[i].local_pid);
             send_multicast(&dp[i], &msg);
 
-            memset(msg.s_payload, 0, msg.s_header.s_payload_len);
-            for (local_id j = 1; j < processes_total; ++j) {
-                if (j != i) {
-                    receive(&dp[i], j, &msg);
-                }
-            }
-            fprintf(event_log, log_received_all_done_fmt, dp[i].local_pid);
-            fflush(event_log);
-            printf(log_received_all_done_fmt, dp[i].local_pid);
+            receive_all(&dp[i], i, &msg);
+            log_received_all_done(dp[i].local_pid);
 
             fclose(event_log);
             return 0;
@@ -150,22 +134,11 @@ int main(int argc, char *argv[]) {
     close_pipes(dp, PARENT_ID);
 
     Message res_msg;
-    for (local_id j = 1; j < processes_total; ++j) {
-        receive(&dp[0], j, &res_msg);
-    }
+    receive_all(&dp[PARENT_ID], PARENT_ID, &res_msg);
+    log_received_all_started(PARENT_ID);
 
-    fprintf(event_log, log_received_all_started_fmt, PARENT_ID);
-    fflush(event_log);
-    printf(log_received_all_started_fmt, PARENT_ID);
-
-    memset(res_msg.s_payload, 0, res_msg.s_header.s_payload_len);
-    for (local_id j = 1; j < processes_total; ++j) {
-        receive(&dp[0], j, &res_msg);
-    }
-
-    fprintf(event_log, log_received_all_done_fmt, PARENT_ID);
-    fflush(event_log);
-    printf(log_received_all_done_fmt, PARENT_ID);
+    receive_all(&dp[PARENT_ID], PARENT_ID, &res_msg);
+    log_received_all_done(PARENT_ID);
 
     fclose(event_log);
     for (local_id j = 1; j < processes_total; ++j) {
