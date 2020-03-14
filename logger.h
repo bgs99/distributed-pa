@@ -2,8 +2,7 @@
 // Created by edem on 13.03.20.
 //
 
-#ifndef DISTRIBUTEDOMPUTING_PA1_LOGGER_H
-#define DISTRIBUTEDOMPUTING_PA1_LOGGER_H
+#pragma once
 
 #include <stdio.h>
 #include "pa1.h"
@@ -35,5 +34,3 @@ void log_received_all_done(local_id local_pid) {
     fflush(event_log);
     printf(log_received_all_done_fmt, local_pid);
 }
-
-#endif //DISTRIBUTEDOMPUTING_PA1_LOGGER_H
